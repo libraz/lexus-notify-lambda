@@ -1,0 +1,13 @@
+{
+  "eslint.workingDirectories": [
+    {"mode": "auto"}
+  ],
+  "editor.formatOnSave": false,
+  "eslint.options": {
+    "configFile": "package.json"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.fixAll.stylelint": true
+  }
+}
