@@ -1,4 +1,5 @@
 import AWS from 'aws-sdk';
+import moment from 'moment';
 import { Notify } from 'line-api';
 import Lexus from './lib/Lexus';
 
@@ -31,7 +32,7 @@ export const lexusNotify = async (event) => {
 	};
 	const dynamodb = getDynamoClient();
 
-	const activeItems = new Set();
+	const archiveItems = new Set();
 	try {
 		const params = {
 			TableName: 'lexus_items',
@@ -45,7 +46,7 @@ export const lexusNotify = async (event) => {
 			const result = await dynamodb.scan(params).promise();
 
 			result.Items.forEach((item) => {
-				activeItems.add(item.id);
+				archiveItems.add(item.id);
 			});
 
 			if (result.LastEvaluatedKey) {
@@ -67,7 +68,7 @@ export const lexusNotify = async (event) => {
 	const newItems = [];
 	await Promise.all(
 		currentItems.map(async (item) => {
-			activeItems.delete(item.id);
+			archiveItems.delete(item.id);
 			const result = await dynamodb
 				.get({
 					TableName: 'lexus_items',
@@ -89,13 +90,20 @@ export const lexusNotify = async (event) => {
 	);
 
 	await Promise.all(
-		Array.from(activeItems).map(async (item) => {
+		Array.from(archiveItems).map(async (itemId) => {
 			await dynamodb
-				.delete({
+				.update({
 					TableName: 'lexus_items',
 					Key: {
-						id: item.id
-					}
+						id: itemId
+					},
+					ExpressionAttributeNames: {
+						'#deletedAt': 'deletedAt'
+					},
+					ExpressionAttributeValues: {
+						':deletedAt': moment().unix()
+					},
+					UpdateExpression: 'SET #deletedAt = :deletedAt'
 				})
 				.promise();
 		})
@@ -103,7 +111,7 @@ export const lexusNotify = async (event) => {
 
 	const matchedItems = newItems
 		.filter((item) => {
-			return item.price < 1000;
+			return item.price < 1100;
 		})
 		.filter((item) => {
 			return item.modelYear >= 2018;
@@ -128,8 +136,10 @@ export const lexusNotify = async (event) => {
 	return {
 		statusCode: 200,
 		body: JSON.stringify({
-			count: matchedItems.length,
-			cars: matchedItems
+			currentItemsCount: currentItems.length,
+			newItemsCount: newItems.length,
+			deletedItemCount: archiveItems.size,
+			matchedItemsCount: matchedItems.length
 		})
 	};
 };

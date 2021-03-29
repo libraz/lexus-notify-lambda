@@ -64,6 +64,6 @@ functions:
   lexusNotify:
     handler: handler.lexusNotify
     events:
-      - schedule: cron(5 11,15,19 * * ? *)
+      - schedule: cron(5 2,6,10 * * ? *)
     environment:
       LINE_TOKEN: ${self:custom.otherfile.environment.${self:provider.stage}.line.token}
